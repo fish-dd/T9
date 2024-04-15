@@ -1,3 +1,4 @@
+//g++ main.cpp -o main.exe -L C:\\Python312\\libs -lpython312 -I C:\\Python312\\include
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -10,63 +11,126 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <termios.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
+#include <Python.h>
+//#include </usr/include/python3.12/pyconfig-64.h>
 
 using namespace std;
 
-int main() {
-    int USB = open( "/dev/ttyUSB0", O_RDWR | O_NOCTTY );
+PyObject *funcs_file = NULL, *funcs = NULL;
+PyObject *funcs_dict = NULL, *pObjct = NULL, *pVal = NULL;
+PyObject* sys = NULL;
+PyObject* sys_path = NULL;
+PyObject* folder_path = NULL;
 
-    Display *dpy;
-    Window win;
-    GC gc;
-    int scr;
-    Atom WM_DELETE_WINDOW;
-    XEvent ev;
-    XEvent ev2;
-    KeySym keysym;
-    int loop;
+PyObject *python_init() {
+    // Инициализировать интерпретатор Python
+    Py_Initialize();
+    //PyRun_SimpleString("import serial\nimport keyboard\nSerial = serial.Serial('/dev/ttyUSB0', 9600)");
 
-    dpy = XOpenDisplay(NULL);
-    if (dpy == NULL) {
-        fputs("Cannot open display", stderr);
-        exit(1);
+    do {
+        // Загрузка модуля sys
+        sys = PyImport_ImportModule("sys");
+        sys_path = PyObject_GetAttrString(sys, "path");
+        // Путь до наших исходников Python
+        folder_path = PyUnicode_FromString((const char*) "./");
+        PyList_Append(sys_path, folder_path);
+
+        // Загрузка functions.py
+        funcs_file = PyUnicode_FromString("functions");
+        if (!funcs_file) {
+            break;
+        }
+
+        // Загрузить объект модуля
+        funcs = PyImport_Import(funcs_file);
+        if (!funcs) {
+            break;
+        }
+
+        // Словарь объектов содержащихся в модуле
+        funcs_dict = PyModule_GetDict(funcs);
+        if (!funcs_dict) {
+            break;
+        }
+
+        return funcs_dict;
+
+    } while (0);
+
+    // Печать ошибки
+    PyErr_Print();
+}
+
+void writing(int clear, char *word) {
+    // Загрузка объекта get_value из func.py
+    pObjct = PyDict_GetItemString(funcs_dict, (const char *) "writing");
+    if (!pObjct) {
+        return;
     }
-    scr = XDefaultScreen(dpy);
 
-    struct termios tty;
-    struct termios tty_old;
-    memset (&tty, 0, sizeof tty);
+    do {
+        // Проверка pObjct на годность.
+        if (!PyCallable_Check(pObjct)) {
+            break;
+        }
 
-    if (tcgetattr(USB, &tty) != 0 ) {
-        std::cout << "Error " << errno << " from tcgetattr: " << strerror(errno) << std::endl;
-    }
+        PyObject_CallFunction(pObjct, (char *) "(is)", clear, word);
+    } while (0);
 
-    tty_old = tty;
+    return;
+}
 
-    tty.c_cflag     &=  ~PARENB;            // Make 8n1
-    tty.c_cflag     &=  ~CSTOPB;
-    tty.c_cflag     &=  ~CSIZE;
-    tty.c_cflag     |=  CS8;
+char *reading() {
+    char *ret = NULL;
 
-    tty.c_cflag     &=  ~CRTSCTS;           // no flow control
-    tty.c_cc[VMIN]   =  1;                  // read doesn't block
-    tty.c_cc[VTIME]  =  5;                  // 0.5 seconds read timeout
-    tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
+    // Загрузка объекта get_value из func.py
+    pObjct = PyDict_GetItemString(funcs_dict, (const char *) "reading");
+    /*if (!pObjct) {
+        return ret;
+    }*/
 
-    /* Make raw */
-    cfmakeraw(&tty);
+    do {
+        // Проверка pObjct на годность.
+        if (!PyCallable_Check(pObjct)) {
+            break;
+        }
 
-    /* Flush Port, then applies attributes */
-    tcflush( USB, TCIFLUSH );
-    if ( tcsetattr ( USB, TCSANOW, &tty ) != 0) {
-    std::cout << "Error " << errno << " from tcsetattr" << std::endl;
-    }
+        pVal = PyObject_CallFunction(pObjct, (const char *) "()");
+        if (pVal != NULL) {
+            PyObject* pResultRepr = PyObject_Repr(pVal);
 
-    cfsetospeed (&tty, (speed_t)B9600);
-    cfsetispeed (&tty, (speed_t)B9600);
+            // Если полученную строку не скопировать, то после очистки ресурсов Python её не будет.
+            // Для начала pResultRepr нужно привести к массиву байтов.
+            ret = strdup(PyBytes_AS_STRING(PyUnicode_AsEncodedString(pResultRepr, "utf-8", "ERROR")));
+
+            Py_XDECREF(pResultRepr);
+            Py_XDECREF(pVal);
+        } else {
+            PyErr_Print();
+        }
+    } while (0);
+
+    return ret;
+}
+
+void python_clear() {
+    PyRun_SimpleString("Serial.close()");
+    // Вернуть ресурсы системе
+    Py_XDECREF(funcs_dict);
+    Py_XDECREF(funcs);
+    Py_XDECREF(funcs_file);
+
+    Py_XDECREF(folder_path);
+    Py_XDECREF(sys_path);
+    Py_XDECREF(sys);
+
+    // Выгрузка интерпретатора Python
+    Py_Finalize();
+}
+
+int main(int argc, char **argv) {
+    setlocale(LC_ALL, "RUS");
+    python_init();
 
     map<char, string> table_ru{
         {'а', "2"},
@@ -166,7 +230,7 @@ int main() {
     pattern.open("pattern_ru.txt" , ios::binary | ios::in);
 
     string line;
-    cout << "Загрузка словарей..." << endl;
+    printf("Loading dicts...\n");
     while (getline(dict, line)) {
         dict_ru += line;
         dict_ru += "\n";
@@ -179,66 +243,59 @@ int main() {
     }
     dict_ru.pop_back();
     pattern_ru.pop_back();
-    cout << "Загрузка словарей завершена." << endl;
+    printf("Loading dicts complete.\n");
 
     string input;
     string pnput;
     char old_response[1024];
     memset(old_response, '\0', sizeof old_response);
+    bool run = true;
+    int index = 0;
+    vector<string> words;
     //char ltrs[input.size() + 1];
 
     while (true) {
-        int n = 0,
-            spot = 0;
-        char buf = '\0';
-        /* Whole response*/
         char response[1024];
-        memset(response, '\0', sizeof response);
+        strcpy(response, reading());
+        //response[16] = '\000';
+        //cout << response << endl;
 
-        do {
-            n = read( USB, &buf, 1 );
-            sprintf( &response[spot], "%c", buf );
-            spot += n;
-        } while( buf != '\r' && n > 0);
-
-        if (n < 0 or n == 0) {
-            cout << "Error reading: " << strerror(errno) << endl;
+        if (string(old_response).find('1') == string(response).find('1')) {
+            //nothing
             //cout << response << endl;
-        } 
+        }
         else {
-            if (string(old_response).find("1") == string(response).find("1")) {
-                //nothing
-            } 
-            else {
-                string input = response;
-                //cout << input << old_response << endl;
-                input.pop_back();
-                int raw_key = input.find("1");
-                if (raw_key > 100) {
-                    raw_key = 0;
-                };
-                string key = key_binds[raw_key];
-                cout << key << endl;
-                //char ltrs[input.size() + 1];
-                //strcpy(old_response, input.c_str());
+            string input = response;
+            int raw_key = input.find('1');
+            if (raw_key > 100) {
+                raw_key = 0;
+            }
+            string key = key_binds[raw_key];
 
-                if ((key != "1") or (key != "10") or (key != "11") or (key != "12") or (key != "13")){
-                    pnput += key;
-                };
-                
-                for (int i = 0; i < ptrn_ru_array.size(); i++) {
-                    if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
-                        cout << ptrn_ru_array[i]<< " " << dict_ru_array[i] << endl;
-                    }
+            if ((key != "1") or (key != "10") or (key != "11") or (key != "12") or (key != "13")){
+                pnput += key;
+                index = 0;
+                words = {};
+            }
+            else if (key == "12") {
+                if (index < words.size()) {
+                    index++;
+                }
+                else {
+                    index = 0;
                 }
             }
+                
+            for (int i = 0; i < ptrn_ru_array.size(); i++) {
+                if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
+                    words.push_back(dict_ru_array[i]);
+                    //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
+                }
+            }
+            cout << words[index] << endl;
         }
-        //char old_response[1024];
         strcpy(old_response, response);
-        //cout << old_response << endl;
     }
-
-    //cout << dict_ru_array.size() << endl;
-
+    python_clear();
     return 0;
 }
