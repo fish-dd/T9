@@ -252,9 +252,25 @@ int main(int argc, char **argv) {
     bool run = true;
     int index = 0;
     vector<string> words;
+    map<string, int> is_ltr{
+        {"", 0},
+        {"1", 1},
+        {"2", 1},
+        {"3", 1},
+        {"4", 1},
+        {"5", 1},
+        {"6", 1},
+        {"7", 1},
+        {"8", 1},
+        {"9", 1},
+        {"10", 0},
+        {"11", 0},
+        {"12", 0},
+        {"13", 0}
+    };
     //char ltrs[input.size() + 1];
 
-    while (true) {
+    while (run) {
         char response[1024];
         strcpy(response, reading());
         //response[16] = '\000';
@@ -264,7 +280,7 @@ int main(int argc, char **argv) {
             //nothing
             //cout << response << endl;
         }
-        else {
+        else if (string(response).find('1') < 100) {
             string input = response;
             int raw_key = input.find('1');
             if (raw_key > 100) {
@@ -272,27 +288,54 @@ int main(int argc, char **argv) {
             }
             string key = key_binds[raw_key];
 
-            if ((key != "1") or (key != "10") or (key != "11") or (key != "12") or (key != "13")){
+            if (is_ltr[key]){
+                //cout << "not key 10!" << key << endl;
                 pnput += key;
-                index = 0;
-                words = {};
+                int index = 0;
+                vector<string> words;\
+
+                
+                for (int i = 0; i < ptrn_ru_array.size(); i++) {
+                    if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
+                        words.push_back(dict_ru_array[i]);
+                        //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
+                    }
+                }
+                if (words.size() > 0) {
+                    cout << words[index] << endl;
+                }
+                //cout << "not key 10!" << endl;
             }
-            else if (key == "12") {
-                if (index < words.size()) {
-                    index++;
+            else if (key == "10") {
+                cout << "key 10!" << words.size() << endl;
+                if ((index + 1) < words.size()) {
+                    cout << "1" << endl;
+                    int index = index + 1;
                 }
                 else {
-                    index = 0;
+                    cout << "2" << endl;
+                    int index = 0;
+                }
+                if (words.size() > 0) {
+                    cout << "3" << endl;
+                    printf(words[index].c_str() + '\n');
+                }
+                //cout << "key 10!" << endl;
+            }
+            else if ((key == "13") and (pnput.size() > 0)) {
+                pnput.pop_back();
+                int index = 0;
+                vector<string> words;
+                for (int i = 0; i < ptrn_ru_array.size(); i++) {
+                    if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
+                        words.push_back(dict_ru_array[i]);
+                        //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
+                    }
+                }
+                if (words.size() > 0) {
+                    cout << words[index] << endl;
                 }
             }
-                
-            for (int i = 0; i < ptrn_ru_array.size(); i++) {
-                if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
-                    words.push_back(dict_ru_array[i]);
-                    //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
-                }
-            }
-            cout << words[index] << endl;
         }
         strcpy(old_response, response);
     }
