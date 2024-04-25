@@ -61,7 +61,7 @@ PyObject *python_init() {
     PyErr_Print();
 }
 
-void writing(int clear, char *word) {
+void writing(int clear, const char *word) {
     // Загрузка объекта get_value из func.py
     pObjct = PyDict_GetItemString(funcs_dict, (const char *) "writing");
     if (!pObjct) {
@@ -292,8 +292,7 @@ int main(int argc, char **argv) {
                 //cout << "not key 10!" << key << endl;
                 pnput += key;
                 int index = 0;
-                vector<string> words;\
-
+                words = {};
                 
                 for (int i = 0; i < ptrn_ru_array.size(); i++) {
                     if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
@@ -303,38 +302,57 @@ int main(int argc, char **argv) {
                 }
                 if (words.size() > 0) {
                     cout << words[index] << endl;
+                    if (pnput.size() > 1) {
+                        writing(1, words[index].c_str());
+                    }
+                    else {
+                        writing(0, words[index].c_str());
+                    }
                 }
                 //cout << "not key 10!" << endl;
             }
             else if (key == "10") {
-                cout << "key 10!" << words.size() << endl;
+                //cout << "key 10!" << words.size() << endl;
                 if ((index + 1) < words.size()) {
-                    cout << "1" << endl;
-                    int index = index + 1;
+                    //cout << "1" << endl;
+                    index++;
                 }
                 else {
-                    cout << "2" << endl;
+                    //cout << "2" << endl;
                     int index = 0;
                 }
                 if (words.size() > 0) {
-                    cout << "3" << endl;
-                    printf(words[index].c_str() + '\n');
+                    //cout << "3" << endl;
+                    cout << words[index] << endl;
+                    writing(1, words[index].c_str());
                 }
                 //cout << "key 10!" << endl;
             }
-            else if ((key == "13") and (pnput.size() > 0)) {
-                pnput.pop_back();
-                int index = 0;
-                vector<string> words;
-                for (int i = 0; i < ptrn_ru_array.size(); i++) {
-                    if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
-                        words.push_back(dict_ru_array[i]);
-                        //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
+            else if (key == "13") {
+                if (pnput.size() > 0) {
+                    pnput.pop_back();
+                    int index = 0;
+                    words = {};
+                    for (int i = 0; i < ptrn_ru_array.size(); i++) {
+                        if ((ptrn_ru_array[i].rfind(pnput, 0) == 0) and (ptrn_ru_array[i].size() == pnput.size())) {
+                            words.push_back(dict_ru_array[i]);
+                            //cout << dict_ru_array[i] << ptrn_ru_array[i] << endl;
+                        }
                     }
+                    cout << endl;
                 }
-                if (words.size() > 0) {
-                    cout << words[index] << endl;
-                }
+                    if (pnput.size() == 0) {
+                        writing(1, "");
+                    }
+                    else {
+                        writing(1, words[index].c_str());
+                    }
+            }
+            else if (key == "11") {
+                pnput = "";
+                int index = 0;
+                words = {};
+                writing(0, " ");
             }
         }
         strcpy(old_response, response);

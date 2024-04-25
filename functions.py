@@ -1,6 +1,7 @@
 import serial
-import keyboard
+from pynput.keyboard import Key, Controller
 Serial = serial.Serial('/dev/ttyUSB0', 9600)
+Keyboard = Controller()
 
 def reading():
     resp: str = Serial.readline().decode("utf-8")
@@ -8,7 +9,8 @@ def reading():
 
 def writing(clear, word):
     if clear:
-        keyboard.send("ctrl+backspace")
-    keyboard.write(word)
+        with Keyboard.pressed(Key.ctrl):
+            Keyboard.tap(Key.backspace)
+    Keyboard.type(word.replace("д", "d").replace())
 
 #Serial.close()
